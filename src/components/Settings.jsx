@@ -36,6 +36,8 @@ export default function Settings({ onBack, onApiKeyUpdate }) {
 
     setTestLoading(true);
     try {
+      console.log("Testing API with key:", apiKey.slice(0, 20) + "...");
+
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -55,19 +57,34 @@ export default function Settings({ onBack, onApiKeyUpdate }) {
         }),
       });
 
+      console.log("Response status:", response.status);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || `API Error: ${response.status}`);
+        let errorMsg = `HTTP ${response.status}`;
+        try {
+          const error = await response.json();
+          console.log("Error response:", error);
+          errorMsg = error.error?.message || error.message || errorMsg;
+        } catch (e) {
+          const text = await response.text();
+          console.log("Error text:", text);
+          errorMsg = text || errorMsg;
+        }
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
+      console.log("Success response:", data);
+
       if (data.content && data.content.length > 0) {
         setTestResult("✅ API key works!");
       } else {
-        throw new Error("No response from API");
+        throw new Error("No response content from API");
       }
     } catch (err) {
-      setTestResult(`❌ ${err.message}`);
+      console.error("Test API error:", err);
+      const msg = err?.message || String(err) || "Unknown error";
+      setTestResult(`❌ ${msg}`);
     } finally {
       setTestLoading(false);
     }
