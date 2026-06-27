@@ -3,8 +3,5 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
-  "outputDirectory": "./dist",
-  "env": {
-    "VITE_ANTHROPIC_API_KEY": "@anthropic-key"
-  }
+  "outputDirectory": "./dist"
 }
