@@ -10,22 +10,42 @@ export async function parseReceipt(imageBase64, apiKey) {
   }
 
   try {
-    const response = await fetch("/api/parse-receipt", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
+        "x-api-key": apiKey,
         "content-type": "application/json",
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        imageBase64,
-        apiKey,
-        prompt: CLAUDE_VISION_PROMPT,
+        model: "claude-haiku-4-5",
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/jpeg",
+                  data: imageBase64,
+                },
+              },
+              {
+                type: "text",
+                text: CLAUDE_VISION_PROMPT,
+              },
+            ],
+          },
+        ],
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Failed to parse receipt");
+      throw new Error(data.error?.message || data.error || "Failed to call Claude API");
     }
 
     if (!data.content || data.content.length === 0) {

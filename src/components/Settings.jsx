@@ -36,23 +36,29 @@ export default function Settings({ onBack, onApiKeyUpdate }) {
 
     setTestLoading(true);
     try {
-      console.log("Testing API via proxy...");
-
-      const response = await fetch("/api/test-api", {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
+          "x-api-key": apiKey,
           "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
         },
-        body: JSON.stringify({ apiKey }),
+        body: JSON.stringify({
+          model: "claude-haiku-4-5",
+          max_tokens: 100,
+          messages: [
+            {
+              role: "user",
+              content: "Say 'OK' in one word only.",
+            },
+          ],
+        }),
       });
 
-      console.log("Proxy response status:", response.status);
-
       const data = await response.json();
-      console.log("Proxy response:", data);
 
       if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}`);
+        throw new Error(data.error?.message || data.error || `HTTP ${response.status}`);
       }
 
       if (
