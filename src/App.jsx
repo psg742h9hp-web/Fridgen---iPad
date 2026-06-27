@@ -9,6 +9,8 @@ import History from "./components/History";
 import Settings from "./components/Settings";
 import "./styles/globals.css";
 
+const BUILD_VERSION = "2025-06-27-v2";
+
 export default function App() {
   const [screen, setScreen] = useState("dashboard");
   const [apiKey, setApiKey] = useState(getApiKey());
