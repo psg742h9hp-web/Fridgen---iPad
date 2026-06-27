@@ -38,6 +38,19 @@ export default function Settings({ onBack, onApiKeyUpdate }) {
     try {
       console.log("Testing API with key:", apiKey.slice(0, 20) + "...");
 
+      const payload = {
+        model: "claude-3-5-haiku-20241022",
+        max_tokens: 100,
+        messages: [
+          {
+            role: "user",
+            content: "Say 'OK' in one word only.",
+          },
+        ],
+      };
+
+      console.log("Request payload:", payload);
+
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -45,45 +58,53 @@ export default function Settings({ onBack, onApiKeyUpdate }) {
           "content-type": "application/json",
           "anthropic-version": "2023-06-01",
         },
-        body: JSON.stringify({
-          model: "claude-3-5-haiku-20241022",
-          max_tokens: 100,
-          messages: [
-            {
-              role: "user",
-              content: "Say 'OK' in one word only.",
-            },
-          ],
-        }),
+        body: JSON.stringify(payload),
+        mode: "cors",
       });
 
       console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+
+      const contentType = response.headers.get("content-type");
+      console.log("Content-Type:", contentType);
+
+      let data;
+      if (contentType?.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.log("Response text:", text);
+        data = text;
+      }
 
       if (!response.ok) {
-        let errorMsg = `HTTP ${response.status}`;
-        try {
-          const error = await response.json();
-          console.log("Error response:", error);
-          errorMsg = error.error?.message || error.message || errorMsg;
-        } catch (e) {
-          const text = await response.text();
-          console.log("Error text:", text);
-          errorMsg = text || errorMsg;
-        }
+        const errorMsg =
+          data.error?.message ||
+          data.message ||
+          `HTTP ${response.status}: ${JSON.stringify(data)}`;
         throw new Error(errorMsg);
       }
 
-      const data = await response.json();
-      console.log("Success response:", data);
+      console.log("Success:", data);
 
-      if (data.content && data.content.length > 0) {
+      if (
+        data.content &&
+        Array.isArray(data.content) &&
+        data.content.length > 0
+      ) {
         setTestResult("✅ API key works!");
       } else {
         throw new Error("No response content from API");
       }
     } catch (err) {
       console.error("Test API error:", err);
-      const msg = err?.message || String(err) || "Unknown error";
+      console.error("Error name:", err?.name);
+      console.error("Error message:", err?.message);
+
+      let msg = err?.message || String(err) || "Unknown error";
+      if (msg.includes("Failed to fetch")) {
+        msg = "CORS error - check API key validity. Try from desktop.";
+      }
       setTestResult(`❌ ${msg}`);
     } finally {
       setTestLoading(false);
