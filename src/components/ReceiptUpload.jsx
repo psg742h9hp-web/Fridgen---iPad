@@ -11,14 +11,27 @@ export default function ReceiptUpload({ apiKey, onParsed, onBack }) {
   async function handleImageSelect(file) {
     if (!file) return;
 
+    if (!apiKey) {
+      setError("❌ API key not configured. Go to Settings ⚙️");
+      return;
+    }
+
     setError("");
     setLoading(true);
 
     try {
       const reader = new FileReader();
+
       reader.onload = async e => {
-        const base64 = e.target.result.split(",")[1];
         try {
+          const result = e.target.result;
+          if (!result || typeof result !== "string") {
+            throw new Error("Failed to read file");
+          }
+          const base64 = result.includes(",") ? result.split(",")[1] : result;
+          if (!base64) {
+            throw new Error("Invalid image format");
+          }
           const items = await parseReceipt(base64, apiKey);
           setLoading(false);
           onParsed(items);
@@ -27,6 +40,12 @@ export default function ReceiptUpload({ apiKey, onParsed, onBack }) {
           setLoading(false);
         }
       };
+
+      reader.onerror = () => {
+        setError("Failed to read image file");
+        setLoading(false);
+      };
+
       reader.readAsDataURL(file);
     } catch (err) {
       setError(err.message || "Failed to process image");
