@@ -36,10 +36,36 @@ export default function Settings({ onBack, onApiKeyUpdate }) {
 
     setTestLoading(true);
     try {
-      // Small test image (1x1 pixel transparent PNG in base64)
-      const testImage = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-      await parseReceipt(testImage, apiKey);
-      setTestResult("✅ API key works!");
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-3-5-haiku-20241022",
+          max_tokens: 100,
+          messages: [
+            {
+              role: "user",
+              content: "Say 'OK' in one word only.",
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || `API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.content && data.content.length > 0) {
+        setTestResult("✅ API key works!");
+      } else {
+        throw new Error("No response from API");
+      }
     } catch (err) {
       setTestResult(`❌ ${err.message}`);
     } finally {
