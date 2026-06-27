@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getApiKey } from "./utils/localStorageManager";
+import { getApiKey, saveMultipleItems } from "./utils/localStorageManager";
 import Dashboard from "./components/Dashboard";
 import ReceiptUpload from "./components/ReceiptUpload";
 import ConfirmationScreen from "./components/ConfirmationScreen";
@@ -32,7 +32,6 @@ export default function App() {
   }
 
   function handleConfirm(items) {
-    const { saveMultipleItems } = require("./utils/localStorageManager");
     saveMultipleItems(items);
     setScreen("dashboard");
   }
