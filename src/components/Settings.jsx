@@ -1,0 +1,182 @@
+import { useState, useEffect } from "react";
+import { getApiKey, saveApiKey, clearAllData, getItems, getHistory } from "../utils/localStorageManager";
+import { parseReceipt } from "../utils/parseReceipt";
+import Layout from "./Layout";
+
+export default function Settings({ onBack, onApiKeyUpdate }) {
+  const [apiKey, setApiKey] = useState("");
+  const [displayKey, setDisplayKey] = useState("");
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState("");
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
+
+  useEffect(() => {
+    const saved = getApiKey();
+    setApiKey(saved);
+    if (saved) {
+      setDisplayKey(`sk-...${saved.slice(-4)}`);
+    }
+  }, []);
+
+  function handleSaveKey() {
+    if (apiKey.trim()) {
+      saveApiKey(apiKey);
+      setDisplayKey(`sk-...${apiKey.slice(-4)}`);
+      setTestResult("✅ API key saved");
+      onApiKeyUpdate?.(apiKey);
+      setTimeout(() => setTestResult(""), 3000);
+    }
+  }
+
+  async function handleTestApi() {
+    if (!apiKey) {
+      setTestResult("❌ No API key configured");
+      return;
+    }
+
+    setTestLoading(true);
+    try {
+      // Small test image (1x1 pixel transparent PNG in base64)
+      const testImage = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      await parseReceipt(testImage, apiKey);
+      setTestResult("✅ API key works!");
+    } catch (err) {
+      setTestResult(`❌ ${err.message}`);
+    } finally {
+      setTestLoading(false);
+    }
+  }
+
+  function handleExportData() {
+    const items = getItems();
+    const history = getHistory();
+    const data = { items, history, exportedAt: new Date().toISOString() };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fridgen-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleClearData() {
+    clearAllData();
+    setShowConfirmClear(false);
+    onBack();
+  }
+
+  return (
+    <Layout title="⚙️ Settings" onBack={onBack}>
+      <div className="p-4 md:p-6 pb-8 space-y-6">
+        {/* API Key Section */}
+        <div className="bg-white border-2 border-gray-300 rounded-lg p-4">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">🔑 API Key</h2>
+
+          {displayKey && (
+            <div className="bg-green-50 border border-green-300 rounded p-3 mb-4 text-sm text-green-700 font-semibold">
+              ✅ Key configured: {displayKey}
+            </div>
+          )}
+
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Anthropic API Key
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="sk-..."
+              className="w-full border-2 border-gray-300 rounded px-3 py-2 font-mono text-sm"
+            />
+            <div className="text-xs text-gray-500 mt-2">
+              Get your key at: <br />
+              anthropic.com/api/keys
+            </div>
+          </div>
+
+          <button
+            onClick={handleSaveKey}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg touch-btn mb-3"
+          >
+            💾 Save Key
+          </button>
+
+          <button
+            onClick={handleTestApi}
+            disabled={testLoading}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg touch-btn disabled:bg-gray-400"
+          >
+            {testLoading ? "🔄 Testing..." : "🧪 Test API"}
+          </button>
+
+          {testResult && (
+            <div className={`mt-3 p-3 rounded text-sm font-semibold ${
+              testResult.includes("✅")
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}>
+              {testResult}
+            </div>
+          )}
+        </div>
+
+        {/* Data Section */}
+        <div className="bg-white border-2 border-gray-300 rounded-lg p-4">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">📊 Data</h2>
+
+          <button
+            onClick={handleExportData}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg touch-btn mb-3"
+          >
+            📥 Export Data (JSON)
+          </button>
+
+          <button
+            onClick={() => setShowConfirmClear(true)}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg touch-btn"
+          >
+            🗑️ Clear All Data
+          </button>
+        </div>
+
+        {/* Confirm Clear Dialog */}
+        {showConfirmClear && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 max-w-sm">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">
+                ⚠️ Clear All Data?
+              </h3>
+              <p className="text-gray-600 mb-6">
+                This will permanently delete all items and history. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleClearData}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg"
+                >
+                  ❌ Delete All
+                </button>
+                <button
+                  onClick={() => setShowConfirmClear(false)}
+                  className="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* About */}
+        <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 text-center text-sm text-gray-600">
+          <div className="font-semibold mb-2">🍎 Fridgen</div>
+          <div>iPad Inventory Manager</div>
+          <div className="mt-2 text-xs">v1.0.0</div>
+        </div>
+      </div>
+    </Layout>
+  );
+}
